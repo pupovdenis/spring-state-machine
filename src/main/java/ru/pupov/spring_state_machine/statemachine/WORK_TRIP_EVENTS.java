@@ -1,0 +1,12 @@
+package ru.pupov.spring_state_machine.statemachine;
+
+public enum WORK_TRIP_EVENTS {
+    ADD_SPECIFICATION,
+    ADD_CHECK_IN_TICKETS,
+    START_DEPARTURE_ROAD,
+    START_WORKING,
+    ADD_CHECK_OUT_TICKETS,
+    START_ARRIVAL_ROAD,
+    ADD_REPORTING_DOCUMENTS,
+    CLOSE_WORK_TRIP
+}
