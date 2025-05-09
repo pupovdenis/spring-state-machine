@@ -9,6 +9,7 @@ import org.springframework.statemachine.config.EnumStateMachineConfigurerAdapter
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.statemachine.guard.Guard;
 import org.springframework.statemachine.listener.StateMachineListener;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.statemachine.state.State;
@@ -20,7 +21,9 @@ import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.ADD_CH
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.ADD_CHECK_OUT_TICKETS;
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.ADD_REPORTING_DOCUMENTS;
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.ADD_SPECIFICATION;
+import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.CHANGE_FIXED_CHECK_OUT_TICKETS;
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.CLOSE_WORK_TRIP;
+import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.CHANGE_FIXED_CHECK_IN_TICKETS;
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.START_ARRIVAL_ROAD;
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.START_DEPARTURE_ROAD;
 import static ru.pupov.spring_state_machine.statemachine.WORK_TRIP_EVENTS.START_WORKING;
@@ -63,15 +66,29 @@ public class WorkTripStateMachineConfig extends EnumStateMachineConfigurerAdapte
 
     @Override
     public void configure(StateMachineTransitionConfigurer<WORK_TRIP_STATES, WORK_TRIP_EVENTS> transitions) throws Exception {
-        transitions.withExternal().source(CREATED).target(SPECIFIED).event(ADD_SPECIFICATION)
+        transitions.withExternal().source(CREATED).target(SPECIFIED).event(ADD_SPECIFICATION).guard(validateSpecification())
                 .and().withExternal().source(SPECIFIED).target(FIXED_CHECK_IN_TICKETS).event(ADD_CHECK_IN_TICKETS)
                 .and().withExternal().source(FIXED_CHECK_IN_TICKETS).target(DEPARTURE_ROAD_FACT).event(START_DEPARTURE_ROAD)
                 .and().withExternal().source(DEPARTURE_ROAD_FACT).target(IN_PROGRESS).event(START_WORKING).action(context -> log.info("working"))
                 .and().withExternal().source(IN_PROGRESS).target(FIXED_CHECK_OUT_TICKETS).event(ADD_CHECK_OUT_TICKETS)
                 .and().withExternal().source(FIXED_CHECK_OUT_TICKETS).target(ARRIVAL_ROAD_FACT).event(START_ARRIVAL_ROAD)
                 .and().withExternal().source(ARRIVAL_ROAD_FACT).target(DOCUMENTS_READY).event(ADD_REPORTING_DOCUMENTS).action(context -> log.info("notify to send documents"))
-                .and().withExternal().source(DOCUMENTS_READY).target(CLOSED).event(CLOSE_WORK_TRIP);
+                .and().withExternal().source(DOCUMENTS_READY).target(CLOSED).event(CLOSE_WORK_TRIP)
+
+                .and().withInternal().source(FIXED_CHECK_IN_TICKETS).event(CHANGE_FIXED_CHECK_IN_TICKETS).action(context -> log.info("notify that check-in tickets was changed"))
+                .and().withInternal().source(FIXED_CHECK_OUT_TICKETS).event(CHANGE_FIXED_CHECK_OUT_TICKETS).action(context -> log.info("notify that check-out tickets was changed"));
     }
+
+    private Guard<WORK_TRIP_STATES, WORK_TRIP_EVENTS> validateSpecification() {
+        return context -> {
+            log.warn("validate specification");
+            context.getExtendedState()
+                    .getVariables()
+                    .put("isValidated", "true");
+            return true;
+        };
+    }
+
     private Action<WORK_TRIP_STATES, WORK_TRIP_EVENTS> notifyOperator() {
         return context -> log.info("need documents");
     }
